@@ -8,11 +8,12 @@
 
 const BASE_URL = "https://api.companycam.com/v2";
 
+// CompanyCam's valid webhook scopes. `photo.deleted` is NOT a valid event
+// (API rejects it with "invalid scope"), so it's excluded here.
 export const WEBHOOK_EVENTS = [
   "project.created",
   "project.updated",
   "photo.created",
-  "photo.deleted",
 ] as const;
 
 export type WebhookEvent = (typeof WEBHOOK_EVENTS)[number];
@@ -73,6 +74,14 @@ function extractFields(body: unknown): {
   };
 }
 
+/** Force https:// on a URL — CompanyCam rejects http. */
+function forceHttps(url: string): string {
+  const trimmed = url.trim().replace(/\/$/, "");
+  if (trimmed.startsWith("https://")) return trimmed;
+  if (trimmed.startsWith("http://")) return "https://" + trimmed.slice(7);
+  return "https://" + trimmed;
+}
+
 /**
  * Register ONE webhook subscription with CompanyCam covering all the events
  * we care about. Returns the full response (including the signing secret).
@@ -82,10 +91,11 @@ export async function registerWebhookSubscription(
   webhookUrl: string
 ): Promise<WebhookRegistrationResult> {
   const events = [...WEBHOOK_EVENTS];
+  const safeUrl = forceHttps(webhookUrl);
 
   const requestBody = {
     webhook: {
-      url: webhookUrl,
+      url: safeUrl,
       events,
       // CompanyCam docs vary between "events" and "scopes" — include both so
       // whichever the API expects is honored. Extra keys are typically ignored.
@@ -117,7 +127,7 @@ export async function registerWebhookSubscription(
       return {
         ok: false,
         status: res.status,
-        url: webhookUrl,
+        url: safeUrl,
         events,
         response: body,
         error: `HTTP ${res.status}`,
@@ -131,7 +141,7 @@ export async function registerWebhookSubscription(
       status: res.status,
       id,
       secret,
-      url: webhookUrl,
+      url: safeUrl,
       events,
       response: body,
     };
@@ -139,7 +149,7 @@ export async function registerWebhookSubscription(
     return {
       ok: false,
       status: 0,
-      url: webhookUrl,
+      url: safeUrl,
       events,
       response: null,
       error: e instanceof Error ? e.message : String(e),

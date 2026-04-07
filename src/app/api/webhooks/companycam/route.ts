@@ -2,7 +2,6 @@ import { NextResponse, type NextRequest } from "next/server";
 import crypto from "crypto";
 import { createAdminClient } from "@/lib/supabase/admin";
 import {
-  deletePhotoByCCId,
   importPhotoFromCC,
   upsertProjectFromCC,
 } from "@/lib/companycam/sync";
@@ -117,13 +116,6 @@ export async function POST(request: NextRequest) {
 
         const ok = await importPhotoFromCC(supabase, cc, project.id);
         return ack({ ok, type });
-      }
-
-      case "photo.deleted": {
-        const cc = extractObject<CCPhoto>(event);
-        if (!cc?.id) return ack({ ok: false, reason: "missing_photo" });
-        const deleted = await deletePhotoByCCId(supabase, cc.id);
-        return ack({ ok: deleted, type });
       }
 
       default:
