@@ -18,6 +18,17 @@ type SyncResult = {
   errors: string[];
 };
 
+type RegisterResult = {
+  ok: boolean;
+  status: number;
+  id?: string;
+  secret?: string;
+  url: string;
+  events: string[];
+  response: unknown;
+  error?: string;
+};
+
 function formatDate(iso: string | null): string {
   if (!iso) return "Never";
   const d = new Date(iso);
@@ -42,6 +53,13 @@ export default function CompanyCamPanel({
   const [result, setResult] = useState<SyncResult | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  const [registering, setRegistering] = useState(false);
+  const [registerResult, setRegisterResult] = useState<RegisterResult | null>(
+    null
+  );
+  const [registerError, setRegisterError] = useState<string | null>(null);
+  const [secretCopied, setSecretCopied] = useState(false);
+
   async function handleSync() {
     setSyncing(true);
     setError(null);
@@ -58,6 +76,37 @@ export default function CompanyCamPanel({
       setError(e instanceof Error ? e.message : "Sync failed");
     } finally {
       setSyncing(false);
+    }
+  }
+
+  async function handleRegisterWebhooks() {
+    setRegistering(true);
+    setRegisterError(null);
+    setRegisterResult(null);
+    setSecretCopied(false);
+    try {
+      const res = await fetch("/api/admin/companycam/register-webhooks", {
+        method: "POST",
+      });
+      const data = (await res.json()) as RegisterResult;
+      if (!data.ok) {
+        setRegisterError(data.error || `HTTP ${data.status}`);
+      }
+      setRegisterResult(data);
+    } catch (e) {
+      setRegisterError(e instanceof Error ? e.message : "Registration failed");
+    } finally {
+      setRegistering(false);
+    }
+  }
+
+  async function handleCopySecret(secret: string) {
+    try {
+      await navigator.clipboard.writeText(secret);
+      setSecretCopied(true);
+      setTimeout(() => setSecretCopied(false), 2000);
+    } catch {
+      // Ignore clipboard errors
     }
   }
 
@@ -132,12 +181,99 @@ export default function CompanyCamPanel({
             "Run Full Sync"
           )}
         </button>
+        <button
+          type="button"
+          onClick={handleRegisterWebhooks}
+          disabled={!connected || registering}
+          className="inline-flex items-center gap-2 bg-navy hover:bg-navy/90 disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-semibold px-5 py-2.5 rounded-lg text-sm transition"
+        >
+          {registering ? "Registering…" : "Register Webhooks"}
+        </button>
         {!tokenConfigured && (
           <p className="text-xs text-gray-500">
             Set <code className="bg-gray-100 px-1 rounded">COMPANYCAM_API_TOKEN</code> in environment variables to enable.
           </p>
         )}
       </div>
+
+      {/* Webhook registration result */}
+      {registerResult && registerResult.ok && (
+        <div className="mt-6 bg-green-50 border border-green-200 rounded-lg p-4 text-sm">
+          <p className="font-semibold text-green-800 mb-2">
+            Webhook registered
+          </p>
+          <ul className="text-green-700 space-y-1 mb-3">
+            {registerResult.id && (
+              <li>
+                Webhook ID:{" "}
+                <code className="bg-white/60 px-1.5 py-0.5 rounded text-xs">
+                  {registerResult.id}
+                </code>
+              </li>
+            )}
+            <li>
+              Events: {registerResult.events.join(", ")}
+            </li>
+          </ul>
+          {registerResult.secret ? (
+            <div className="bg-white border border-green-300 rounded-lg p-3 mt-2">
+              <p className="text-xs font-semibold text-gray-700 mb-1.5">
+                Signing secret — copy this into{" "}
+                <code className="bg-gray-100 px-1 rounded">
+                  COMPANYCAM_WEBHOOK_SECRET
+                </code>{" "}
+                in .env.local AND Vercel:
+              </p>
+              <div className="flex items-center gap-2">
+                <code className="flex-1 min-w-0 bg-gray-50 border border-gray-200 rounded px-2 py-1.5 text-xs font-mono text-gray-800 truncate">
+                  {registerResult.secret}
+                </code>
+                <button
+                  type="button"
+                  onClick={() => handleCopySecret(registerResult.secret!)}
+                  className={`flex-shrink-0 px-3 py-1.5 rounded text-xs font-semibold transition ${
+                    secretCopied
+                      ? "bg-green-500 text-white"
+                      : "bg-navy hover:bg-navy/90 text-white"
+                  }`}
+                >
+                  {secretCopied ? "Copied!" : "Copy"}
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="bg-amber-50 border border-amber-200 rounded p-2 text-xs text-amber-800 mt-2">
+              No secret in response. Full payload logged below — share the
+              field name with your developer.
+            </div>
+          )}
+          <details className="mt-3">
+            <summary className="text-xs text-gray-500 cursor-pointer hover:text-gray-700">
+              View full response
+            </summary>
+            <pre className="mt-2 bg-gray-50 border border-gray-200 rounded p-2 text-xs overflow-x-auto">
+              {JSON.stringify(registerResult.response, null, 2)}
+            </pre>
+          </details>
+        </div>
+      )}
+
+      {registerError && (
+        <div className="mt-6 bg-red-50 border border-red-200 rounded-lg p-4 text-sm text-red-700">
+          <p className="font-semibold mb-1">Webhook registration failed</p>
+          <p>{registerError}</p>
+          {registerResult && (
+            <details className="mt-2">
+              <summary className="text-xs cursor-pointer hover:text-red-900">
+                View response
+              </summary>
+              <pre className="mt-2 bg-white border border-red-200 rounded p-2 text-xs overflow-x-auto">
+                {JSON.stringify(registerResult.response, null, 2)}
+              </pre>
+            </details>
+          )}
+        </div>
+      )}
 
       {/* Result */}
       {result && (
