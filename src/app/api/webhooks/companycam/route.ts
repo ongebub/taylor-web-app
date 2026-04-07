@@ -50,6 +50,13 @@ function extractObject<T>(event: CCWebhookEvent): T | null {
 }
 
 export async function POST(request: NextRequest) {
+  console.log(
+    "[env check]",
+    Object.keys(process.env).filter(
+      (k) => k.includes("COMPANY") || k.includes("WEBHOOK")
+    )
+  );
+
   const rawBody = await request.text();
   const signature = request.headers.get("x-companycam-signature");
   const secret = process.env.COMPANYCAM_WEBHOOK_SECRET;
