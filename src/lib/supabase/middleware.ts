@@ -33,18 +33,29 @@ export async function updateSession(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  const isLoginPage = request.nextUrl.pathname === "/admin/login";
-  const isAdminRoute = request.nextUrl.pathname.startsWith("/admin");
+  const { pathname } = request.nextUrl;
+  const publicAdminRoutes = [
+    "/admin/login",
+    "/admin/forgot-password",
+    "/admin/auth/callback",
+  ];
+  const isPublicAdminRoute = publicAdminRoutes.some(
+    (route) => pathname === route || pathname.startsWith(route + "/")
+  );
+  const isAdminRoute = pathname.startsWith("/admin");
 
   // Redirect unauthenticated users to login
-  if (!user && isAdminRoute && !isLoginPage) {
+  if (!user && isAdminRoute && !isPublicAdminRoute) {
     const url = request.nextUrl.clone();
     url.pathname = "/admin/login";
     return NextResponse.redirect(url);
   }
 
-  // Redirect authenticated users away from login page
-  if (user && isLoginPage) {
+  // Redirect authenticated users away from login / forgot-password pages
+  if (
+    user &&
+    (pathname === "/admin/login" || pathname === "/admin/forgot-password")
+  ) {
     const url = request.nextUrl.clone();
     url.pathname = "/admin/projects";
     return NextResponse.redirect(url);

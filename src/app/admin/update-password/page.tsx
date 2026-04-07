@@ -3,12 +3,11 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 
-export default function AdminLoginPage() {
-  const [email, setEmail] = useState("");
+export default function UpdatePasswordPage() {
   const [password, setPassword] = useState("");
+  const [confirm, setConfirm] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const router = useRouter();
@@ -17,12 +16,19 @@ export default function AdminLoginPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
+
+    if (password.length < 6) {
+      setError("Password must be at least 6 characters");
+      return;
+    }
+    if (password !== confirm) {
+      setError("Passwords do not match");
+      return;
+    }
+
     setLoading(true);
 
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+    const { error } = await supabase.auth.updateUser({ password });
 
     if (error) {
       setError(error.message);
@@ -51,10 +57,10 @@ export default function AdminLoginPage() {
 
           {/* Heading */}
           <h1 className="text-2xl font-bold text-navy text-center mb-2">
-            Admin Login
+            Set New Password
           </h1>
           <p className="text-gray-500 text-center text-sm mb-6">
-            Sign in to manage projects and customers
+            Choose a new password for your account
           </p>
 
           {/* Error Message */}
@@ -68,28 +74,10 @@ export default function AdminLoginPage() {
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label
-                htmlFor="email"
-                className="block text-sm font-medium text-gray-700 mb-1"
-              >
-                Email
-              </label>
-              <input
-                id="email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-orange focus:border-transparent transition"
-                placeholder="you@taylorexteriors.com"
-              />
-            </div>
-
-            <div>
-              <label
                 htmlFor="password"
                 className="block text-sm font-medium text-gray-700 mb-1"
               >
-                Password
+                New Password
               </label>
               <input
                 id="password"
@@ -97,8 +85,28 @@ export default function AdminLoginPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
+                minLength={6}
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-orange focus:border-transparent transition"
-                placeholder="Enter your password"
+                placeholder="At least 6 characters"
+              />
+            </div>
+
+            <div>
+              <label
+                htmlFor="confirm"
+                className="block text-sm font-medium text-gray-700 mb-1"
+              >
+                Confirm Password
+              </label>
+              <input
+                id="confirm"
+                type="password"
+                value={confirm}
+                onChange={(e) => setConfirm(e.target.value)}
+                required
+                minLength={6}
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-orange focus:border-transparent transition"
+                placeholder="Re-enter password"
               />
             </div>
 
@@ -107,17 +115,8 @@ export default function AdminLoginPage() {
               disabled={loading}
               className="w-full bg-orange hover:bg-orange/90 text-white font-semibold py-3 rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {loading ? "Signing in..." : "Sign In"}
+              {loading ? "Updating..." : "Update Password"}
             </button>
-
-            <div className="text-center">
-              <Link
-                href="/admin/forgot-password"
-                className="text-sm text-orange hover:text-orange/80 font-medium transition"
-              >
-                Forgot password?
-              </Link>
-            </div>
           </form>
         </div>
       </div>
