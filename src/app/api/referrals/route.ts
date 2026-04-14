@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sendTransactionalEmail, upsertContactToList } from "@/lib/brevo";
 import { APP_URL, GOOGLE_PROFILE_URL } from "@/lib/config";
+import { FEATURED_REVIEWS } from "@/lib/reviews";
 
 const LOGO_URL =
   "https://static.wixstatic.com/media/c8f2dc_45dae5be2cab45c1a964279915378377~mv2.png";
@@ -48,14 +49,24 @@ function buildEmailBody(opts: {
     referralId
   )}`;
 
+  const reviewLines = FEATURED_REVIEWS.flatMap((r) => [
+    "★★★★★",
+    `"${r.quote}"`,
+    `— ${r.author}${r.label ? `, ${r.label}` : ""}`,
+    "",
+  ]);
+
   const text = [
     greeting,
     "",
     `Your friend ${referrerName} just had their ${projectPhrase} done by Taylor Exteriors & Construction and wanted to pass along a great experience.`,
     "",
-    `${referrerName} was kind enough to leave us a review — check it out: ${GOOGLE_PROFILE_URL}`,
-    "",
     "If you've been thinking about a new roof, siding, windows, or deck — we'd love to help. We're local, honest, and we back everything we install.",
+    "",
+    "★★★★★  5.0 · Google Reviews",
+    "",
+    ...reviewLines,
+    `Read all our reviews: ${GOOGLE_PROFILE_URL}`,
     "",
     `GET YOUR FREE ESTIMATE: ${estimateUrl}`,
     "",
@@ -104,20 +115,63 @@ function buildEmailBody(opts: {
                 ${escapeHtml(projectPhrase)} done by Taylor Exteriors &amp; Construction
                 and wanted to pass along a great experience.
               </p>
-              <p style="margin:0 0 10px">
-                ${escapeHtml(referrerName)} was kind enough to leave us a review — check it out:
-              </p>
-              <p style="margin:0 0 22px">
-                <a href="${GOOGLE_PROFILE_URL}" style="color:${ORANGE};font-weight:600;text-decoration:none">
-                  Read the Google Review &rarr;
-                </a>
-              </p>
               <p style="margin:0 0 6px">
                 If you&rsquo;ve been thinking about a new roof, siding, windows, or deck — we&rsquo;d love to help.
               </p>
               <p style="margin:0 0 4px;color:#4b5563;font-size:15px">
                 We&rsquo;re local, honest, and we back everything we install.
               </p>
+            </td>
+          </tr>
+
+          <!-- Reviews block -->
+          <tr>
+            <td style="padding:16px 28px 4px" align="center">
+              <a href="${GOOGLE_PROFILE_URL}" style="text-decoration:none;display:inline-block">
+                <span style="color:${ORANGE};font-size:18px;letter-spacing:2px">&#9733;&#9733;&#9733;&#9733;&#9733;</span>
+                <span style="display:inline-block;margin-left:8px;color:${NAVY};font-size:13px;font-weight:700;vertical-align:middle">
+                  5.0 &middot; Google Reviews
+                </span>
+              </a>
+            </td>
+          </tr>
+
+          ${FEATURED_REVIEWS.map(
+            (r) => `
+          <tr>
+            <td style="padding:10px 28px 0">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f3f4f6;border-left:4px solid ${ORANGE};border-radius:8px">
+                <tr>
+                  <td style="padding:14px 16px">
+                    <div style="color:${ORANGE};font-size:14px;letter-spacing:1px;margin-bottom:6px">&#9733;&#9733;&#9733;&#9733;&#9733;</div>
+                    <p style="margin:0 0 8px;font-size:14px;color:#1f2937;line-height:1.55;font-style:italic">
+                      &ldquo;${escapeHtml(r.quote)}&rdquo;
+                    </p>
+                    <p style="margin:0;font-size:12px;color:#6b7280">
+                      &mdash; <strong style="color:${NAVY}">${escapeHtml(r.author)}</strong>${
+                        r.label ? `, ${escapeHtml(r.label)}` : ""
+                      }
+                    </p>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>`
+          ).join("")}
+
+          <!-- Secondary "read all reviews" button -->
+          <tr>
+            <td align="center" style="padding:18px 28px 6px">
+              <table role="presentation" cellpadding="0" cellspacing="0">
+                <tr>
+                  <td align="center" style="background:${NAVY};border-radius:10px">
+                    <a href="${GOOGLE_PROFILE_URL}"
+                       style="display:inline-block;padding:10px 22px;color:#ffffff;font-size:13px;font-weight:600;text-decoration:none;border-radius:10px">
+                      Read All Our Reviews &rarr;
+                    </a>
+                  </td>
+                </tr>
+              </table>
             </td>
           </tr>
 

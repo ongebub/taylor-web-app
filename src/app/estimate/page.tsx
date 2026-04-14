@@ -1,7 +1,8 @@
 import { Suspense } from "react";
 import Image from "next/image";
 import EstimateForm from "./EstimateForm";
-import { COMPANY_PHONE, COMPANY_EMAIL } from "@/lib/config";
+import { COMPANY_PHONE, COMPANY_EMAIL, GOOGLE_PROFILE_URL } from "@/lib/config";
+import { FEATURED_REVIEWS } from "@/lib/reviews";
 
 export const metadata = {
   title: "Get Your Free Estimate | Taylor Exteriors & Construction",
@@ -63,6 +64,53 @@ export default function EstimatePage() {
       {/* Form */}
       <main className="flex-1 -mt-8 pb-16">
         <div className="max-w-xl mx-auto px-4 sm:px-6">
+          {/* Testimonials */}
+          <section className="mb-6">
+            <a
+              href={GOOGLE_PROFILE_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center justify-center gap-2 mb-4 group"
+            >
+              <span className="text-orange text-xl tracking-[0.2em]">
+                ★★★★★
+              </span>
+              <span className="text-sm font-bold text-navy group-hover:text-orange transition">
+                5.0 · Google Reviews
+              </span>
+            </a>
+            <div className="space-y-3">
+              {FEATURED_REVIEWS.map((r) => (
+                <blockquote
+                  key={r.author}
+                  className="bg-gray-100 border-l-4 border-orange rounded-lg px-4 py-3"
+                >
+                  <div className="text-orange text-sm tracking-[0.15em] mb-1.5">
+                    ★★★★★
+                  </div>
+                  <p className="text-sm text-gray-800 italic leading-relaxed">
+                    &ldquo;{r.quote}&rdquo;
+                  </p>
+                  <footer className="mt-2 text-xs text-gray-500">
+                    &mdash;{" "}
+                    <span className="font-semibold text-navy">{r.author}</span>
+                    {r.label ? `, ${r.label}` : null}
+                  </footer>
+                </blockquote>
+              ))}
+            </div>
+            <div className="text-center mt-4">
+              <a
+                href={GOOGLE_PROFILE_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-block bg-navy hover:bg-navy/90 text-white font-semibold text-xs px-5 py-2.5 rounded-lg transition"
+              >
+                Read All Our Reviews &rarr;
+              </a>
+            </div>
+          </section>
+
           <Suspense
             fallback={
               <div className="bg-white rounded-2xl shadow-md border border-gray-100 p-8 text-center text-gray-400">
