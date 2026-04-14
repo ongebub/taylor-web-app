@@ -30,7 +30,8 @@ export type CCPhotoUri = {
 export type CCPhoto = {
   id: string;
   project_id?: string | null;
-  uris?: CCPhotoUri[];
+  // API returns an array; webhook returns an object keyed by size.
+  uris?: CCPhotoUri[] | Record<string, string | { uri?: string; url?: string }>;
   photo_url?: string;
   captured_at?: number | string | null;
   description?: string | null;

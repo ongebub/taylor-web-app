@@ -137,6 +137,10 @@ export async function POST(request: NextRequest) {
       console.log("[companycam webhook] matched photo branch");
       const cc = extractObject<CCPhoto>(event, "photo");
       console.log(
+        "[companycam webhook] full photo object",
+        JSON.stringify(cc).slice(0, 1500)
+      );
+      console.log(
         `[companycam webhook] photo extract id=${cc?.id} project_id=${cc?.project_id}`
       );
       if (!cc?.id) return ack({ ok: false, reason: "missing_photo", type });

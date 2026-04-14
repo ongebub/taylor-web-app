@@ -164,6 +164,11 @@ export async function importPhotoFromCC(
   if (existing) return true;
 
   const sourceUrl = bestPhotoUrl(cc);
+  console.log(
+    `[companycam] photo ${cc.id} uris=`,
+    JSON.stringify(cc.uris).slice(0, 500)
+  );
+  console.log(`[companycam] photo ${cc.id} picked URL=${sourceUrl}`);
   if (!sourceUrl) {
     console.warn(`[companycam] photo ${cc.id} has no usable URL`);
     return false;
@@ -172,8 +177,9 @@ export async function importPhotoFromCC(
   // Download
   const res = await fetch(sourceUrl);
   if (!res.ok) {
+    const bodyPreview = await res.text().catch(() => "");
     console.error(
-      `[companycam] failed to download photo ${cc.id}: ${res.status}`
+      `[companycam] failed to download photo ${cc.id} from ${sourceUrl}: ${res.status} ${bodyPreview.slice(0, 200)}`
     );
     return false;
   }
@@ -193,13 +199,17 @@ export async function importPhotoFromCC(
     });
 
   if (uploadError) {
-    console.error("[companycam] storage upload failed", uploadError.message);
+    console.error(
+      `[companycam] storage upload failed for ${cc.id} path=${storagePath}`,
+      uploadError.message
+    );
     return false;
   }
 
   const {
     data: { publicUrl },
   } = supabase.storage.from(PHOTO_BUCKET).getPublicUrl(storagePath);
+  console.log(`[companycam] stored photo ${cc.id} publicUrl=${publicUrl}`);
 
   const { error: insertError } = await supabase.from("photos").insert({
     project_id: projectRowId,

@@ -89,15 +89,45 @@ export async function listProjectPhotos(
   return all;
 }
 
-/** Pick the best available image URL from a CompanyCam photo payload. */
+/**
+ * Pick the best available image URL from a CompanyCam photo payload.
+ * Handles both webhook shape (uris is an object of size → url) and
+ * API shape (uris is an array of { type, uri }).
+ */
 export function bestPhotoUrl(photo: CCPhoto): string | null {
   if (photo.photo_url) return photo.photo_url;
-  if (!photo.uris || photo.uris.length === 0) return null;
+  const uris = photo.uris as unknown;
+  if (!uris) return null;
 
-  const preferredOrder = ["original", "web", "large", "medium", "thumbnail"];
-  for (const type of preferredOrder) {
-    const match = photo.uris.find((u) => u.type === type);
-    if (match) return match.uri || match.url || null;
+  const preferred = ["original", "web", "large", "medium", "thumb", "thumbnail"];
+
+  if (Array.isArray(uris)) {
+    for (const type of preferred) {
+      const match = uris.find(
+        (u: { type?: string; uri?: string; url?: string }) => u.type === type
+      );
+      if (match) return match.uri || match.url || null;
+    }
+    const first = uris[0] as { uri?: string; url?: string } | undefined;
+    return first?.uri || first?.url || null;
   }
-  return photo.uris[0]?.uri || photo.uris[0]?.url || null;
+
+  if (typeof uris === "object") {
+    const map = uris as Record<string, string | { uri?: string; url?: string }>;
+    for (const type of preferred) {
+      const v = map[type];
+      if (!v) continue;
+      if (typeof v === "string") return v;
+      if (v.uri) return v.uri;
+      if (v.url) return v.url;
+    }
+    // Last resort: first value
+    for (const v of Object.values(map)) {
+      if (typeof v === "string") return v;
+      if (v?.uri) return v.uri;
+      if (v?.url) return v.url;
+    }
+  }
+
+  return null;
 }
