@@ -36,6 +36,8 @@ function buildEmailBody(
     "",
     "If you're thinking about roofing, siding, windows, decking or storm damage repair, we'd love to help.",
     "",
+    `As a thank-you, if you sign a contract over $5,000 we'll send ${referrerName} a $100 Amazon gift card.`,
+    "",
     "Taylor Exteriors & Construction",
     "515-953-4000",
     "info@taylorext.com",
@@ -52,6 +54,8 @@ function buildEmailBody(
      <a href="${GOOGLE_REVIEW_URL}" style="color:#ea580c">you can read it here</a>.</p>
   <p>If you&rsquo;re thinking about roofing, siding, windows, decking or storm damage repair,
      we&rsquo;d love to help.</p>
+  <p>As a thank-you, if you sign a contract over $5,000 we&rsquo;ll send
+     ${referrerName} a <strong>$100 Amazon gift card</strong>.</p>
   <p style="margin-top:28px;color:#374151">
     <strong>Taylor Exteriors &amp; Construction</strong><br>
     <a href="tel:515-953-4000" style="color:#374151">515-953-4000</a><br>

@@ -119,7 +119,7 @@ export default function ReferralSection({
       </h2>
       <p className="text-sm text-gray-500 mb-5">
         For every referral that signs a contract over $5,000 we&apos;ll send
-        you a $50 Amazon gift card.
+        you a $100 Amazon gift card.
       </p>
 
       <form onSubmit={handleSubmit} className="space-y-3">
