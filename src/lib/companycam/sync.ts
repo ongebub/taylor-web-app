@@ -9,12 +9,17 @@ import type { CCPhoto, CCProject } from "./types";
 
 const PHOTO_BUCKET = "project-photos";
 
-/** Map a CompanyCam project status to our allowed values. */
+/**
+ * Map a CompanyCam project status to our allowed values.
+ * CompanyCam's "active" means "this job is on the books" — that's our
+ * "scheduled", not "in_progress". We only move to in_progress / complete
+ * when CompanyCam explicitly says so.
+ */
 function mapStatus(ccStatus?: string | null): string {
   if (!ccStatus) return "scheduled";
-  const s = ccStatus.toLowerCase();
-  if (s.includes("complete") || s === "done") return "complete";
-  if (s.includes("progress") || s === "active") return "in_progress";
+  const s = ccStatus.toLowerCase().trim();
+  if (s === "complete" || s === "completed" || s === "done") return "complete";
+  if (s === "in_progress" || s === "in progress") return "in_progress";
   return "scheduled";
 }
 

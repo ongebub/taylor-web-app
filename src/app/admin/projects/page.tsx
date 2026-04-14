@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import Link from "next/link";
-import StatusBadge from "./StatusBadge";
+import StatusSelect from "./StatusSelect";
 import { formatFullAddress } from "@/lib/utils";
 
 export default async function ProjectsPage() {
@@ -87,7 +87,10 @@ export default async function ProjectsPage() {
                       {project.project_type}
                     </td>
                     <td className="px-6 py-4">
-                      <StatusBadge status={project.status} />
+                      <StatusSelect
+                        projectId={project.id}
+                        initialStatus={project.status}
+                      />
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-600">
                       {new Date(project.created_at).toLocaleDateString()}
@@ -125,7 +128,10 @@ export default async function ProjectsPage() {
                   <h2 className="font-semibold text-gray-900">
                     {project.customer_name}
                   </h2>
-                  <StatusBadge status={project.status} />
+                  <StatusSelect
+                    projectId={project.id}
+                    initialStatus={project.status}
+                  />
                 </div>
                 <p className="text-sm text-gray-600 mb-1">
                   {formatFullAddress(
