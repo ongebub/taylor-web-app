@@ -52,6 +52,15 @@ interface Warranty {
   document_url: string | null;
 }
 
+interface Document {
+  id: string;
+  name: string;
+  description: string | null;
+  file_url: string;
+  file_path: string;
+  created_at: string;
+}
+
 const PROGRESS_STAGES = [
   { key: "scheduled", label: "Scheduled" },
   { key: "materials", label: "Materials" },
@@ -98,11 +107,13 @@ export default function CustomerPortal({
   milestones,
   photos,
   warranties,
+  documents,
 }: {
   project: Project;
   milestones: Milestone[];
   photos: Photo[];
   warranties: Warranty[];
+  documents: Document[];
 }) {
   const [showAllMilestones, setShowAllMilestones] = useState(false);
   const activeStage = getActiveStageIndex(project.status, milestones);
@@ -479,6 +490,59 @@ export default function CustomerPortal({
             </div>
           </section>
         )}
+
+        {/* ── DOCUMENTS ── */}
+        <section>
+          <h2 className="text-lg font-bold text-navy mb-4">Documents</h2>
+          {documents.length === 0 ? (
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 text-center">
+              <p className="text-sm text-gray-400">
+                Your project documents will appear here
+              </p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {documents.map((d) => (
+                <div
+                  key={d.id}
+                  className="bg-white rounded-xl shadow-sm border border-gray-200 p-5 flex flex-col"
+                >
+                  <div className="flex-1 min-w-0">
+                    <h3 className="text-sm font-semibold text-navy truncate">
+                      {d.name}
+                    </h3>
+                    {d.description && (
+                      <p className="text-xs text-gray-500 mt-1 line-clamp-3">
+                        {d.description}
+                      </p>
+                    )}
+                  </div>
+                  <a
+                    href={d.file_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="mt-3 inline-flex items-center gap-1.5 text-sm font-medium text-orange hover:text-orange/80 transition self-start"
+                  >
+                    <svg
+                      className="h-4 w-4"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                      strokeWidth={2}
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5m0 0l5-5m-5 5V4"
+                      />
+                    </svg>
+                    Download
+                  </a>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
 
         {/* ── FOOTER ── */}
         <footer className="pt-4 pb-8 text-center space-y-4">

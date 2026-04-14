@@ -39,23 +39,29 @@ export default async function ProjectPortalPage({
 
   if (!project) notFound();
 
-  const [milestonesRes, photosRes, warrantiesRes] = await Promise.all([
-    supabase
-      .from("milestones")
-      .select("*")
-      .eq("project_id", project.id)
-      .order("order_index", { ascending: true }),
-    supabase
-      .from("photos")
-      .select("*")
-      .eq("project_id", project.id)
-      .order("order_index", { ascending: true }),
-    supabase
-      .from("warranties")
-      .select("*")
-      .eq("project_id", project.id)
-      .order("created_at", { ascending: true }),
-  ]);
+  const [milestonesRes, photosRes, warrantiesRes, documentsRes] =
+    await Promise.all([
+      supabase
+        .from("milestones")
+        .select("*")
+        .eq("project_id", project.id)
+        .order("order_index", { ascending: true }),
+      supabase
+        .from("photos")
+        .select("*")
+        .eq("project_id", project.id)
+        .order("order_index", { ascending: true }),
+      supabase
+        .from("warranties")
+        .select("*")
+        .eq("project_id", project.id)
+        .order("created_at", { ascending: true }),
+      supabase
+        .from("documents")
+        .select("*")
+        .eq("project_id", project.id)
+        .order("created_at", { ascending: false }),
+    ]);
 
   return (
     <CustomerPortal
@@ -63,6 +69,7 @@ export default async function ProjectPortalPage({
       milestones={milestonesRes.data ?? []}
       photos={photosRes.data ?? []}
       warranties={warrantiesRes.data ?? []}
+      documents={documentsRes.data ?? []}
     />
   );
 }

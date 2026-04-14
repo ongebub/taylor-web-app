@@ -7,6 +7,7 @@ import ProjectDetailsForm, {
 import PhotosTab from "./PhotosTab";
 import MilestonesTab from "./MilestonesTab";
 import WarrantiesTab from "./WarrantiesTab";
+import DocumentsTab from "./DocumentsTab";
 import ShareQRTab from "./ShareQRTab";
 
 const TABS = [
@@ -14,6 +15,7 @@ const TABS = [
   "Photos",
   "Milestones",
   "Warranties",
+  "Documents",
   "Share & QR",
 ] as const;
 
@@ -90,6 +92,10 @@ export default function ProjectTabs({ project }: { project: ProjectData }) {
 
       {activeTab === "Warranties" && project.id && (
         <WarrantiesTab projectId={project.id} />
+      )}
+
+      {activeTab === "Documents" && project.id && (
+        <DocumentsTab projectId={project.id} />
       )}
 
       {activeTab === "Share & QR" && project.slug && (
