@@ -174,8 +174,11 @@ export async function importPhotoFromCC(
     return false;
   }
 
-  // Download
-  const res = await fetch(sourceUrl);
+  // Download (authenticated — CC image URLs can require a bearer token)
+  const apiToken = process.env.COMPANYCAM_API_TOKEN;
+  const res = await fetch(sourceUrl, {
+    headers: apiToken ? { Authorization: `Bearer ${apiToken}` } : {},
+  });
   if (!res.ok) {
     const bodyPreview = await res.text().catch(() => "");
     console.error(
@@ -184,7 +187,16 @@ export async function importPhotoFromCC(
     return false;
   }
   const contentType = res.headers.get("content-type") || "image/jpeg";
-  const ext = contentType.split("/")[1]?.split(";")[0] || "jpg";
+
+  // Prefer extension from the URL path (strip query string); fall back to
+  // the MIME type, then .jpg. Never rely on the default .html content-type.
+  const urlPath = sourceUrl.split("?")[0];
+  const urlExt = urlPath.includes(".") ? urlPath.split(".").pop() : "";
+  const mimeExt = contentType.split("/")[1]?.split(";")[0];
+  const ext =
+    (urlExt && urlExt.length <= 5 ? urlExt : "") ||
+    (mimeExt && mimeExt !== "html" ? mimeExt : "") ||
+    "jpg";
   const buffer = Buffer.from(await res.arrayBuffer());
 
   // Upload to Storage

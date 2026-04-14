@@ -91,11 +91,11 @@ export async function listProjectPhotos(
 
 /**
  * Pick the best available image URL from a CompanyCam photo payload.
- * Handles both webhook shape (uris is an object of size → url) and
- * API shape (uris is an array of { type, uri }).
+ * Only uses the `uris` collection — never falls back to `photo_url`, which
+ * points to the app.companycam.com viewer (HTML, not an image). Prefers
+ * original → web → thumbnail. Handles both array and object forms.
  */
 export function bestPhotoUrl(photo: CCPhoto): string | null {
-  if (photo.photo_url) return photo.photo_url;
   const uris = photo.uris as unknown;
   if (!uris) return null;
 
@@ -108,8 +108,7 @@ export function bestPhotoUrl(photo: CCPhoto): string | null {
       );
       if (match) return match.uri || match.url || null;
     }
-    const first = uris[0] as { uri?: string; url?: string } | undefined;
-    return first?.uri || first?.url || null;
+    return null;
   }
 
   if (typeof uris === "object") {
@@ -120,12 +119,6 @@ export function bestPhotoUrl(photo: CCPhoto): string | null {
       if (typeof v === "string") return v;
       if (v.uri) return v.uri;
       if (v.url) return v.url;
-    }
-    // Last resort: first value
-    for (const v of Object.values(map)) {
-      if (typeof v === "string") return v;
-      if (v?.uri) return v.uri;
-      if (v?.url) return v.url;
     }
   }
 
