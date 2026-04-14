@@ -76,7 +76,10 @@ export default function ProjectTabs({ project }: { project: ProjectData }) {
       {/* Tab content */}
       {activeTab === "Project Details" && (
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-          <ProjectDetailsForm project={project} />
+          <ProjectDetailsForm
+            project={{ ...project, status: projectStatus }}
+            onStatusChange={handleStatusChange}
+          />
         </div>
       )}
 

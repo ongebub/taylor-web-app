@@ -27,6 +27,8 @@ const emptyForm: MilestoneForm = {
   completed_date: "",
 };
 
+// Final Inspection is ALWAYS last in every preset — completing the last
+// milestone triggers project.status = "complete" via updateProjectStatus.
 const PRESET_MILESTONES: Record<string, string[]> = {
   Roofing: [
     "Materials Delivered",
@@ -34,22 +36,23 @@ const PRESET_MILESTONES: Record<string, string[]> = {
     "Underlayment",
     "Shingles Installed",
     "Flashing & Ridge Cap",
-    "Final Inspection",
     "Cleanup & Walkthrough",
+    "Final Inspection",
   ],
   Siding: [
     "Materials Delivered",
     "Prep & Removal",
     "Installation",
     "Trim & Finishing",
-    "Inspection",
     "Cleanup & Walkthrough",
+    "Final Inspection",
   ],
   "Windows & Doors": [
     "Materials Ordered",
     "Delivery & Prep",
     "Installation",
     "Trim & Sealing",
+    "Cleanup & Walkthrough",
     "Final Inspection",
   ],
   Decking: [
@@ -58,17 +61,24 @@ const PRESET_MILESTONES: Record<string, string[]> = {
     "Framing",
     "Decking Installed",
     "Railing & Finishing",
-    "Final Walkthrough",
+    "Cleanup & Walkthrough",
+    "Final Inspection",
   ],
   "Storm Damage": [
     "Assessment",
     "Insurance Documentation",
     "Materials Delivered",
     "Repair Work",
-    "Final Inspection",
     "Documentation Complete",
+    "Cleanup & Walkthrough",
+    "Final Inspection",
   ],
-  Other: ["Project Start", "In Progress", "Final Inspection", "Complete"],
+  Other: [
+    "Project Start",
+    "In Progress",
+    "Cleanup & Walkthrough",
+    "Final Inspection",
+  ],
 };
 
 export default function MilestonesTab({
@@ -139,50 +149,56 @@ export default function MilestonesTab({
     fetchMilestones();
   }, [fetchMilestones]);
 
+  /**
+   * Recompute project status after a milestone was toggled.
+   * The LAST milestone (highest order_index) triggers project completion —
+   * no hardcoded title match, so whatever the team puts last is the gate.
+   */
   async function updateProjectStatus(
     updatedMilestones: Milestone[],
-    toggledTitle: string,
+    toggledId: string,
     wasCompleted: boolean
   ) {
     if (!mountedRef.current) return;
-    const anyComplete = updatedMilestones.some((m) => m.completed_date);
-    const isFinalInspection =
-      toggledTitle.toLowerCase() === "final inspection";
+    if (updatedMilestones.length === 0) return;
 
-    // Marking a milestone complete (not uncompleting)
+    const sorted = [...updatedMilestones].sort(
+      (a, b) => a.order_index - b.order_index
+    );
+    const lastMilestone = sorted[sorted.length - 1];
+    const isLast = lastMilestone.id === toggledId;
+    const anyComplete = updatedMilestones.some((m) => m.completed_date);
+
     if (!wasCompleted) {
-      if (isFinalInspection) {
+      // Just marked complete
+      if (isLast) {
         const today = new Date().toISOString().split("T")[0];
         const { error } = await supabase
           .from("projects")
           .update({ status: "complete", actual_completion: today })
           .eq("id", projectId);
-
         if (!error) onStatusChange?.("complete");
       } else if (anyComplete) {
         const { error } = await supabase
           .from("projects")
           .update({ status: "in_progress" })
           .eq("id", projectId);
-
         if (!error) onStatusChange?.("in_progress");
       }
     } else {
-      // Uncompleting — if no milestones are complete, revert to scheduled
-      // If Final Inspection was uncompleted, revert to in_progress
-      if (isFinalInspection && anyComplete) {
+      // Just marked incomplete
+      if (isLast && anyComplete) {
+        // Was the completion trigger — drop back to in_progress
         const { error } = await supabase
           .from("projects")
           .update({ status: "in_progress", actual_completion: null })
           .eq("id", projectId);
-
         if (!error) onStatusChange?.("in_progress");
       } else if (!anyComplete) {
         const { error } = await supabase
           .from("projects")
-          .update({ status: "scheduled" })
+          .update({ status: "scheduled", actual_completion: null })
           .eq("id", projectId);
-
         if (!error) onStatusChange?.("scheduled");
       }
     }
@@ -294,7 +310,7 @@ export default function MilestonesTab({
     );
     setMilestones(updatedMilestones);
 
-    await updateProjectStatus(updatedMilestones, m.title, wasCompleted);
+    await updateProjectStatus(updatedMilestones, m.id, wasCompleted);
   }
 
   async function handleDelete(id: string) {

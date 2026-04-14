@@ -58,8 +58,10 @@ const emptyProject: ProjectData = {
 
 export default function ProjectDetailsForm({
   project,
+  onStatusChange,
 }: {
   project?: ProjectData;
+  onStatusChange?: (status: string) => void;
 }) {
   const isNew = !project?.id;
   const router = useRouter();
@@ -67,6 +69,15 @@ export default function ProjectDetailsForm({
 
   const [form, setForm] = useState<ProjectData>(project ?? emptyProject);
   const [slug, setSlug] = useState(project?.slug ?? "");
+
+  // Keep form.status in sync when the parent updates it (e.g. milestones tab
+  // auto-completes the project while the details form is mounted).
+  useEffect(() => {
+    if (project?.status && project.status !== form.status) {
+      setForm((f) => ({ ...f, status: project.status }));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [project?.status]);
   const [slugTouched, setSlugTouched] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
@@ -180,6 +191,10 @@ export default function ProjectDetailsForm({
         }
         setSuccess("Project saved successfully");
         setSaving(false);
+        // Notify parent so the tab-header badge matches the saved value.
+        if (payload.status && payload.status !== project?.status) {
+          onStatusChange?.(payload.status);
+        }
         router.refresh();
       }
     } catch (err) {
