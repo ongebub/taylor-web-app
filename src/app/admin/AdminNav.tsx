@@ -18,6 +18,7 @@ export default function AdminNav() {
 
   const links = [
     { href: "/admin/projects", label: "Projects" },
+    { href: "/admin/referrals", label: "Referrals" },
     { href: "/admin/settings", label: "Settings" },
   ];
 

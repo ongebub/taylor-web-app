@@ -1,9 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Image from "next/image";
 import { formatFullAddress } from "@/lib/utils";
+import { GOOGLE_REVIEW_URL } from "@/lib/config";
 import PhotoGallery from "./PhotoGallery";
+import ReferralSection from "./ReferralSection";
 
 interface Project {
   id: string;
@@ -117,6 +119,29 @@ export default function CustomerPortal({
 }) {
   const [showAllMilestones, setShowAllMilestones] = useState(false);
   const activeStage = getActiveStageIndex(project.status, milestones);
+
+  // Review button click tracking: persists per project slug in localStorage
+  // so the thank-you + referral section stay visible on return visits.
+  const reviewStorageKey = `review_clicked_${project.slug}`;
+  const [reviewClicked, setReviewClicked] = useState(false);
+  useEffect(() => {
+    try {
+      if (localStorage.getItem(reviewStorageKey) === "true") {
+        setReviewClicked(true);
+      }
+    } catch {
+      // localStorage disabled — silent fallback
+    }
+  }, [reviewStorageKey]);
+
+  function handleReviewClick() {
+    try {
+      localStorage.setItem(reviewStorageKey, "true");
+    } catch {
+      // ignore
+    }
+    setReviewClicked(true);
+  }
 
   const address = formatFullAddress(
     project.street_address ?? "",
@@ -544,26 +569,72 @@ export default function CustomerPortal({
           )}
         </section>
 
+        {/* ── REVIEW + REFERRAL ── */}
+        {project.status === "complete" && (
+          <section className="space-y-6">
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 text-center">
+              {!reviewClicked ? (
+                <>
+                  <h2 className="text-lg font-bold text-navy mb-2">
+                    Enjoying your new {project.project_type.toLowerCase()}?
+                  </h2>
+                  <p className="text-sm text-gray-500 mb-5">
+                    Reviews help local neighbors find a contractor they can
+                    trust.
+                  </p>
+                  <a
+                    href={GOOGLE_REVIEW_URL}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={handleReviewClick}
+                    className="inline-flex items-center gap-2 bg-orange hover:bg-orange/90 text-white font-semibold px-6 py-3 rounded-xl text-sm transition shadow-sm"
+                  >
+                    <svg
+                      className="h-5 w-5"
+                      fill="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1.5 14.5v-9l7 4.5-7 4.5z" />
+                    </svg>
+                    Leave Us a Google Review
+                  </a>
+                </>
+              ) : (
+                <>
+                  <svg
+                    className="h-10 w-10 text-green-500 mx-auto mb-3"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                    strokeWidth={2.5}
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                    />
+                  </svg>
+                  <h2 className="text-lg font-bold text-navy mb-1">
+                    Thank you!
+                  </h2>
+                  <p className="text-sm text-gray-500">
+                    We appreciate you taking the time to leave a review.
+                  </p>
+                </>
+              )}
+            </div>
+
+            {reviewClicked && (
+              <ReferralSection
+                projectId={project.id}
+                referrerName={project.customer_name}
+              />
+            )}
+          </section>
+        )}
+
         {/* ── FOOTER ── */}
         <footer className="pt-4 pb-8 text-center space-y-4">
-          {project.google_review_url &&
-            project.status === "complete" && (
-              <a
-                href={project.google_review_url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 bg-orange hover:bg-orange/90 text-white font-semibold px-6 py-3 rounded-xl text-sm transition shadow-sm"
-              >
-                <svg
-                  className="h-5 w-5"
-                  fill="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1.5 14.5v-9l7 4.5-7 4.5z" />
-                </svg>
-                Leave Us a Google Review
-              </a>
-            )}
           <div className="text-xs text-gray-400 space-y-1">
             <p>
               Taylor Exteriors & Construction &middot; Des Moines, IA
