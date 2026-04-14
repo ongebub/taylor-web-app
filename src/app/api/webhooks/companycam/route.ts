@@ -87,54 +87,76 @@ export async function POST(request: NextRequest) {
     return ack({ ok: false, reason: "invalid_json" });
   }
 
-  const type = event.type || "";
-  console.log(`[companycam webhook] received ${type}`);
+  // CompanyCam sends `event_type`; older docs show `type`. Accept either.
+  const raw = event as unknown as Record<string, unknown>;
+  const type =
+    (typeof raw.event_type === "string" && raw.event_type) ||
+    (typeof raw.type === "string" && raw.type) ||
+    "";
+
+  console.log("[companycam webhook] payload keys", Object.keys(raw));
+  console.log(`[companycam webhook] event_type=${type}`);
+  console.log(
+    "[companycam webhook] payload preview",
+    JSON.stringify(raw).slice(0, 500)
+  );
+
+  // Normalize: treat "project_created", "project.created", "project/created" the same
+  const normType = type.replace(/[._/]/g, ".");
 
   try {
     const supabase = createAdminClient();
 
-    switch (type) {
-      case "project.created":
-      case "project.updated": {
-        const cc = extractObject<CCProject>(event);
-        if (!cc?.id) {
-          return ack({ ok: false, reason: "missing_project" });
-        }
-        const rowId = await upsertProjectFromCC(supabase, cc);
-        return ack({ ok: true, type, projectRowId: rowId });
+    if (normType.startsWith("project.")) {
+      console.log("[companycam webhook] matched project branch");
+      const cc = extractObject<CCProject>(event);
+      console.log(
+        `[companycam webhook] project extract id=${cc?.id} name=${cc?.name}`
+      );
+      if (!cc?.id) {
+        return ack({ ok: false, reason: "missing_project", type });
       }
-
-      case "photo.created": {
-        const cc = extractObject<CCPhoto>(event);
-        if (!cc?.id) return ack({ ok: false, reason: "missing_photo" });
-        if (!cc.project_id) {
-          return ack({ ok: false, reason: "photo_without_project" });
-        }
-
-        // Find (or auto-create) the project row
-        const { data: project } = await supabase
-          .from("projects")
-          .select("id")
-          .eq("companycam_id", cc.project_id)
-          .maybeSingle();
-
-        if (!project) {
-          console.warn(
-            `[companycam webhook] photo ${cc.id} references unknown project ${cc.project_id}`
-          );
-          return ack({ ok: false, reason: "project_not_found" });
-        }
-
-        const ok = await importPhotoFromCC(supabase, cc, project.id);
-        return ack({ ok, type });
-      }
-
-      default:
-        return ack({ ok: true, type, note: "ignored" });
+      const rowId = await upsertProjectFromCC(supabase, cc);
+      console.log(`[companycam webhook] upsert result rowId=${rowId}`);
+      return ack({ ok: true, type, projectRowId: rowId });
     }
+
+    if (normType.startsWith("photo.")) {
+      console.log("[companycam webhook] matched photo branch");
+      const cc = extractObject<CCPhoto>(event);
+      console.log(
+        `[companycam webhook] photo extract id=${cc?.id} project_id=${cc?.project_id}`
+      );
+      if (!cc?.id) return ack({ ok: false, reason: "missing_photo", type });
+      if (!cc.project_id) {
+        return ack({ ok: false, reason: "photo_without_project", type });
+      }
+
+      const { data: project } = await supabase
+        .from("projects")
+        .select("id")
+        .eq("companycam_id", cc.project_id)
+        .maybeSingle();
+
+      if (!project) {
+        console.warn(
+          `[companycam webhook] photo ${cc.id} references unknown project ${cc.project_id}`
+        );
+        return ack({ ok: false, reason: "project_not_found", type });
+      }
+
+      const ok = await importPhotoFromCC(supabase, cc, project.id);
+      console.log(`[companycam webhook] photo import ok=${ok}`);
+      return ack({ ok, type });
+    }
+
+    console.log(`[companycam webhook] no handler for type=${type}`);
+    return ack({ ok: true, type, note: "ignored" });
   } catch (err) {
-    console.error("[companycam webhook] handler error", err);
-    // Still 200 so CompanyCam doesn't retry forever on a bug on our side
+    console.error(
+      "[companycam webhook] handler error",
+      err instanceof Error ? err.stack || err.message : err
+    );
     return ack({
       ok: false,
       reason: "handler_error",
