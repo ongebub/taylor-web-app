@@ -4,6 +4,7 @@
  *
  * Usage:
  *   npx ts-node scripts/companycam-sync.ts
+ *   npx ts-node scripts/companycam-sync.ts --since 2026-03-15
  *
  * Requires these in .env.local (automatically loaded):
  *   NEXT_PUBLIC_SUPABASE_URL
@@ -53,18 +54,36 @@ async function main() {
     process.exit(1);
   }
 
+  // Parse --since YYYY-MM-DD
+  let sinceIso: string | null = null;
+  const sinceIdx = process.argv.indexOf("--since");
+  if (sinceIdx !== -1) {
+    const raw = process.argv[sinceIdx + 1];
+    const parsed = raw ? Date.parse(raw) : NaN;
+    if (!Number.isFinite(parsed)) {
+      console.error(`Invalid --since date: ${raw}`);
+      process.exit(1);
+    }
+    sinceIso = new Date(parsed).toISOString();
+    console.log(`Filtering to projects created on/after ${sinceIso}`);
+  }
+
   const supabase = createAdminClient();
 
-  const result = await fullSyncFromCompanyCam(supabase, token, (msg) => {
-    console.log(msg);
-  });
+  const result = await fullSyncFromCompanyCam(
+    supabase,
+    token,
+    (msg) => console.log(msg),
+    { sinceIso }
+  );
 
   console.log("\n=== Summary ===");
-  console.log(`Projects imported:  ${result.projectsImported}`);
-  console.log(`Projects skipped:   ${result.projectsSkipped}`);
-  console.log(`Photos imported:    ${result.photosImported}`);
-  console.log(`Photos skipped:     ${result.photosSkipped}`);
-  console.log(`Errors:             ${result.errors.length}`);
+  console.log(`Projects imported:       ${result.projectsImported}`);
+  console.log(`Projects skipped:        ${result.projectsSkipped}`);
+  console.log(`Projects filtered out:   ${result.projectsFilteredOut}`);
+  console.log(`Photos imported:         ${result.photosImported}`);
+  console.log(`Photos skipped:          ${result.photosSkipped}`);
+  console.log(`Errors:                  ${result.errors.length}`);
 
   if (result.errors.length > 0) {
     console.log("\nFirst 10 errors:");

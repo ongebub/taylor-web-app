@@ -13,10 +13,17 @@ type Props = {
 type SyncResult = {
   projectsImported: number;
   projectsSkipped: number;
+  projectsFilteredOut: number;
   photosImported: number;
   photosSkipped: number;
   errors: string[];
 };
+
+function defaultSinceDate(): string {
+  const d = new Date();
+  d.setDate(d.getDate() - 30);
+  return d.toISOString().slice(0, 10);
+}
 
 type RegisterResult = {
   ok: boolean;
@@ -52,6 +59,7 @@ export default function CompanyCamPanel({
   const [syncing, setSyncing] = useState(false);
   const [result, setResult] = useState<SyncResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [since, setSince] = useState<string>(defaultSinceDate());
 
   const [registering, setRegistering] = useState(false);
   const [registerResult, setRegisterResult] = useState<RegisterResult | null>(
@@ -65,7 +73,11 @@ export default function CompanyCamPanel({
     setError(null);
     setResult(null);
     try {
-      const res = await fetch("/api/admin/companycam/sync", { method: "POST" });
+      const res = await fetch("/api/admin/companycam/sync", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ since }),
+      });
       const data = await res.json();
       if (!res.ok || !data.ok) {
         setError(data.error || "Sync failed");
@@ -127,8 +139,8 @@ export default function CompanyCamPanel({
         <div>
           <h2 className="text-lg font-semibold text-navy">CompanyCam</h2>
           <p className="text-sm text-gray-500 mt-1">
-            Projects and photos sync automatically via webhook. Run a full sync
-            to back-fill everything from CompanyCam.
+            Projects and photos sync automatically via webhook. Use the sync
+            button to back-fill projects created on or after the selected date.
           </p>
         </div>
         <div className="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-full px-3 py-1.5">
@@ -147,11 +159,21 @@ export default function CompanyCamPanel({
       </div>
 
       {/* Actions */}
-      <div className="mt-6 flex flex-wrap items-center gap-3">
+      <div className="mt-6 flex flex-wrap items-end gap-3">
+        <label className="flex flex-col gap-1 text-xs font-medium text-gray-700">
+          Import projects created after:
+          <input
+            type="date"
+            value={since}
+            onChange={(e) => setSince(e.target.value)}
+            disabled={syncing}
+            className="border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 disabled:bg-gray-100"
+          />
+        </label>
         <button
           type="button"
           onClick={handleSync}
-          disabled={!connected || syncing}
+          disabled={!connected || syncing || !since}
           className="inline-flex items-center gap-2 bg-orange hover:bg-orange/90 disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-semibold px-5 py-2.5 rounded-lg text-sm transition"
         >
           {syncing ? (
@@ -178,7 +200,7 @@ export default function CompanyCamPanel({
               Syncing…
             </>
           ) : (
-            "Run Full Sync"
+            "Run Sync"
           )}
         </button>
         <button
@@ -283,6 +305,9 @@ export default function CompanyCamPanel({
             <li>
               Projects: <strong>{result.projectsImported}</strong> new,{" "}
               {result.projectsSkipped} existing
+              {result.projectsFilteredOut > 0 && (
+                <>, {result.projectsFilteredOut} older than cutoff</>
+              )}
             </li>
             <li>
               Photos: <strong>{result.photosImported}</strong> new,{" "}

@@ -264,19 +264,39 @@ export async function deletePhotoByCCId(
 export type SyncResult = {
   projectsImported: number;
   projectsSkipped: number;
+  projectsFilteredOut: number;
   photosImported: number;
   photosSkipped: number;
   errors: string[];
 };
 
+export type SyncOptions = {
+  /** Only import CompanyCam projects with created_at >= this ISO date. */
+  sinceIso?: string | null;
+};
+
+/** Parse CompanyCam's created_at (unix seconds or ISO string) to epoch ms. */
+function ccCreatedMs(cc: { created_at?: number | string }): number | null {
+  const raw = cc.created_at;
+  if (raw == null) return null;
+  if (typeof raw === "number") {
+    // CC sends unix seconds; anything below year 3000 in seconds stays < 1e11
+    return raw < 1e11 ? raw * 1000 : raw;
+  }
+  const parsed = Date.parse(raw);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
 /**
  * Full import: fetch every CompanyCam project + every photo and bring into Supabase.
  * Skips anything already imported (by companycam_id).
+ * If `sinceIso` is provided, projects created before that date are skipped.
  */
 export async function fullSyncFromCompanyCam(
   supabase: SupabaseClient,
   apiToken: string,
-  onProgress?: (message: string) => void
+  onProgress?: (message: string) => void,
+  options: SyncOptions = {}
 ): Promise<SyncResult> {
   const log = (msg: string) => {
     console.log(msg);
@@ -286,16 +306,30 @@ export async function fullSyncFromCompanyCam(
   const result: SyncResult = {
     projectsImported: 0,
     projectsSkipped: 0,
+    projectsFilteredOut: 0,
     photosImported: 0,
     photosSkipped: 0,
     errors: [],
   };
+
+  const sinceMs = options.sinceIso ? Date.parse(options.sinceIso) : NaN;
+  const hasSince = Number.isFinite(sinceMs);
+  if (hasSince) {
+    log(`Filtering to projects created on/after ${options.sinceIso}`);
+  }
 
   log("Fetching CompanyCam projects...");
   const projects = await listAllProjects(apiToken);
   log(`Found ${projects.length} projects in CompanyCam`);
 
   for (const cc of projects) {
+    if (hasSince) {
+      const createdMs = ccCreatedMs(cc);
+      if (createdMs == null || createdMs < sinceMs) {
+        result.projectsFilteredOut += 1;
+        continue;
+      }
+    }
     try {
       log(`Importing project: ${cc.name}...`);
 
@@ -348,7 +382,7 @@ export async function fullSyncFromCompanyCam(
   }
 
   log(
-    `Done. Projects: +${result.projectsImported} new, ${result.projectsSkipped} existing. Photos: +${result.photosImported} new, ${result.photosSkipped} existing. Errors: ${result.errors.length}`
+    `Done. Projects: +${result.projectsImported} new, ${result.projectsSkipped} existing, ${result.projectsFilteredOut} filtered. Photos: +${result.photosImported} new, ${result.photosSkipped} existing. Errors: ${result.errors.length}`
   );
 
   return result;
