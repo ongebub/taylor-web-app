@@ -36,16 +36,28 @@ function verifySignature(
   return { ok: crypto.timingSafeEqual(a, b), expected, provided };
 }
 
-/** Unwrap the project/photo object from any of the common webhook shapes. */
-function extractObject<T>(event: CCWebhookEvent): T | null {
+/**
+ * Unwrap the project/photo object from any of the common webhook shapes.
+ * Current CompanyCam format nests under `payload.project` / `payload.photo`;
+ * older/alternate shapes are kept as fallbacks.
+ */
+function extractObject<T>(
+  event: CCWebhookEvent,
+  kind: "project" | "photo"
+): T | null {
   const e = event as unknown as Record<string, unknown>;
+  const payload = (e.payload as Record<string, unknown> | undefined) || {};
+
   const candidate =
-    (event.project as unknown) ||
-    (event.photo as unknown) ||
-    (event.event_object as unknown) ||
-    (event.data as unknown) ||
+    (payload[kind] as unknown) ||
+    (e[kind] as unknown) ||
+    (payload.event_object as unknown) ||
+    (payload.data as unknown) ||
+    (e.event_object as unknown) ||
+    (e.data as unknown) ||
     e.resource ||
     null;
+
   return (candidate as T) || null;
 }
 
@@ -109,7 +121,7 @@ export async function POST(request: NextRequest) {
 
     if (normType.startsWith("project.")) {
       console.log("[companycam webhook] matched project branch");
-      const cc = extractObject<CCProject>(event);
+      const cc = extractObject<CCProject>(event, "project");
       console.log(
         `[companycam webhook] project extract id=${cc?.id} name=${cc?.name}`
       );
@@ -123,7 +135,7 @@ export async function POST(request: NextRequest) {
 
     if (normType.startsWith("photo.")) {
       console.log("[companycam webhook] matched photo branch");
-      const cc = extractObject<CCPhoto>(event);
+      const cc = extractObject<CCPhoto>(event, "photo");
       console.log(
         `[companycam webhook] photo extract id=${cc?.id} project_id=${cc?.project_id}`
       );
