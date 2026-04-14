@@ -12,28 +12,28 @@ export const dynamic = "force-dynamic";
 
 /**
  * Timing-safe HMAC-SHA1 signature check.
- * CompanyCam sends signature in the `X-CompanyCam-Signature` header, hex-encoded.
+ * CompanyCam sends signature in the `X-CompanyCam-Signature` header, base64-encoded.
  */
 function verifySignature(
   rawBody: string,
   signature: string | null,
   secret: string
-): boolean {
-  if (!signature) return false;
+): { ok: boolean; expected: string; provided: string } {
   const expected = crypto
     .createHmac("sha1", secret)
-    .update(rawBody, "utf8")
-    .digest("hex");
+    .update(rawBody)
+    .digest("base64");
 
-  // Accept either "sha1=..." or raw hex
-  const provided = signature.startsWith("sha1=")
+  const provided = signature?.startsWith("sha1=")
     ? signature.slice(5)
-    : signature;
+    : signature ?? "";
 
-  const a = Buffer.from(expected, "hex");
-  const b = Buffer.from(provided, "hex");
-  if (a.length !== b.length) return false;
-  return crypto.timingSafeEqual(a, b);
+  if (!provided) return { ok: false, expected, provided };
+
+  const a = Buffer.from(provided);
+  const b = Buffer.from(expected);
+  if (a.length !== b.length) return { ok: false, expected, provided };
+  return { ok: crypto.timingSafeEqual(a, b), expected, provided };
 }
 
 /** Unwrap the project/photo object from any of the common webhook shapes. */
@@ -71,7 +71,11 @@ export async function POST(request: NextRequest) {
     return ack({ ok: false, reason: "secret_not_configured" });
   }
 
-  if (!verifySignature(rawBody, signature, secret)) {
+  const sig = verifySignature(rawBody, signature, secret);
+  console.log(
+    `[companycam webhook] sig check received=${sig.provided.slice(0, 10)} expected=${sig.expected.slice(0, 10)}`
+  );
+  if (!sig.ok) {
     console.warn("[companycam webhook] invalid signature");
     return ack({ ok: false, reason: "invalid_signature" });
   }
