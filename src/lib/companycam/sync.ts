@@ -39,6 +39,49 @@ async function uniqueSlug(
   }
 }
 
+type AddressParts = {
+  street_address: string;
+  city: string;
+  state: string;
+  zip: string;
+};
+
+/**
+ * Normalize CompanyCam address → our 4-column shape.
+ * Prefers structured fields; falls back to parsing a comma-delimited string.
+ * Format assumed: "123 Main St, Des Moines, IA 50309"
+ */
+function parseAddress(cc: CCProject): AddressParts {
+  const a = cc.address as unknown;
+
+  // String form — split on commas
+  if (typeof a === "string") {
+    const parts = a.split(",").map((s) => s.trim()).filter(Boolean);
+    const [street = "", city = "", stateZip = ""] = parts;
+    const [stateTok = "", zipTok = ""] = stateZip.split(/\s+/);
+    return {
+      street_address: street,
+      city: city || "Des Moines",
+      state: stateTok || "IA",
+      zip: zipTok || "",
+    };
+  }
+
+  // Structured form
+  const obj = (a || {}) as {
+    street_address_1?: string | null;
+    city?: string | null;
+    state?: string | null;
+    postal_code?: string | null;
+  };
+  return {
+    street_address: obj.street_address_1 || "",
+    city: obj.city || "Des Moines",
+    state: obj.state || "IA",
+    zip: obj.postal_code || "",
+  };
+}
+
 /**
  * Upsert a CompanyCam project into our projects table.
  * Returns the project row id (existing or new).
@@ -54,36 +97,40 @@ export async function upsertProjectFromCC(
     .eq("companycam_id", cc.id)
     .maybeSingle();
 
-  const street = cc.address?.street_address_1 || "";
-  const city = cc.address?.city || "";
-  const state = cc.address?.state || "";
-  const zip = cc.address?.postal_code || "";
-  const fullAddress = [street, [city, state].filter(Boolean).join(", "), zip]
-    .filter(Boolean)
-    .join(", ");
+  const addr = parseAddress(cc);
+  const customerName = cc.name || "CompanyCam Project";
 
   if (existing) {
     // Update name/address on project.updated events
     await supabase
       .from("projects")
       .update({
-        customer_name: cc.name || "CompanyCam Project",
-        address: fullAddress || null,
+        customer_name: customerName,
+        street_address: addr.street_address,
+        city: addr.city,
+        state: addr.state,
+        zip: addr.zip,
         status: mapStatus(cc.status),
       })
       .eq("id", existing.id);
     return existing.id;
   }
 
-  const baseSlug = generateSlug(cc.name || "project", street || cc.name || "");
+  const baseSlug = generateSlug(
+    cc.name || "project",
+    addr.street_address || cc.name || ""
+  );
   const slug = await uniqueSlug(supabase, baseSlug);
 
   const { data: inserted, error } = await supabase
     .from("projects")
     .insert({
       slug,
-      customer_name: cc.name || "CompanyCam Project",
-      address: fullAddress || null,
+      customer_name: customerName,
+      street_address: addr.street_address,
+      city: addr.city,
+      state: addr.state,
+      zip: addr.zip,
       status: mapStatus(cc.status),
       companycam_id: cc.id,
     })
