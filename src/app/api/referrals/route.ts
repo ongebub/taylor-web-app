@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sendTransactionalEmail, upsertContactToList } from "@/lib/brevo";
-import { APP_URL, GOOGLE_REVIEW_URL } from "@/lib/config";
+import { APP_URL, GOOGLE_PROFILE_URL } from "@/lib/config";
 
 const LOGO_URL =
   "https://static.wixstatic.com/media/c8f2dc_45dae5be2cab45c1a964279915378377~mv2.png";
@@ -53,7 +53,7 @@ function buildEmailBody(opts: {
     "",
     `Your friend ${referrerName} just had their ${projectPhrase} done by Taylor Exteriors & Construction and wanted to pass along a great experience.`,
     "",
-    `${referrerName} was kind enough to leave us a review — check it out: ${GOOGLE_REVIEW_URL}`,
+    `${referrerName} was kind enough to leave us a review — check it out: ${GOOGLE_PROFILE_URL}`,
     "",
     "If you've been thinking about a new roof, siding, windows, or deck — we'd love to help. We're local, honest, and we back everything we install.",
     "",
@@ -108,7 +108,7 @@ function buildEmailBody(opts: {
                 ${escapeHtml(referrerName)} was kind enough to leave us a review — check it out:
               </p>
               <p style="margin:0 0 22px">
-                <a href="${GOOGLE_REVIEW_URL}" style="color:${ORANGE};font-weight:600;text-decoration:none">
+                <a href="${GOOGLE_PROFILE_URL}" style="color:${ORANGE};font-weight:600;text-decoration:none">
                   Read the Google Review &rarr;
                 </a>
               </p>
