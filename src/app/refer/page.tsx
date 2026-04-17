@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import Image from "next/image";
 
 const LOGO_URL =
@@ -25,6 +25,39 @@ export default function ReferPage() {
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState("");
+  const [linkCopied, setLinkCopied] = useState(false);
+
+  const handleShare = useCallback(async () => {
+    const url = "https://taylor-web-app.vercel.app/refer";
+    const shareData = {
+      title: "Refer a Friend to Taylor Exteriors",
+      text: "Know someone who needs roofing, siding, windows, or decking? Refer them and earn a $100 gift card!",
+      url,
+    };
+
+    if (typeof navigator.share === "function" && navigator.canShare?.(shareData)) {
+      try {
+        await navigator.share(shareData);
+      } catch {
+        // User cancelled share
+      }
+    } else {
+      try {
+        await navigator.clipboard.writeText(url);
+      } catch {
+        const textarea = document.createElement("textarea");
+        textarea.value = url;
+        textarea.style.position = "fixed";
+        textarea.style.opacity = "0";
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand("copy");
+        document.body.removeChild(textarea);
+      }
+      setLinkCopied(true);
+      setTimeout(() => setLinkCopied(false), 2500);
+    }
+  }, []);
 
   function updateRow(index: number, field: keyof ReferralRow, value: string) {
     setRows((prev) =>
@@ -332,6 +365,35 @@ export default function ReferPage() {
           totaling $10,000 or more and project is complete. One gift card per
           qualifying referral. No limit on referrals.
         </p>
+
+        {/* Share Button */}
+        <div className="text-center mt-8">
+          <button
+            type="button"
+            onClick={handleShare}
+            className={`inline-flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-semibold transition ${
+              linkCopied
+                ? "bg-green-600 text-white"
+                : "bg-white/10 border border-white/20 text-gray-300 hover:text-white hover:bg-white/20"
+            }`}
+          >
+            {linkCopied ? (
+              <>
+                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                </svg>
+                Link copied!
+              </>
+            ) : (
+              <>
+                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+                </svg>
+                Share this page
+              </>
+            )}
+          </button>
+        </div>
       </div>
     </div>
   );
