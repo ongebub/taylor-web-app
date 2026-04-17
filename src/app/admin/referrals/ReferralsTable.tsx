@@ -17,6 +17,7 @@ export type ReferralRow = {
   gift_card_sent: boolean;
   gift_card_sent_at: string | null;
   created_at: string;
+  source?: string;
   project?: {
     id: string;
     customer_name: string | null;
@@ -25,6 +26,7 @@ export type ReferralRow = {
 };
 
 type Filter = "all" | "pending" | "signed" | "gift_card_sent";
+type SourceFilter = "all" | "portal" | "public";
 
 function formatDate(iso: string | null): string {
   if (!iso) return "—";
@@ -50,10 +52,16 @@ export default function ReferralsTable({
   const supabase = useMemo(() => createClient(), []);
   const [rows, setRows] = useState<ReferralRow[]>(initialRows);
   const [filter, setFilter] = useState<Filter>("all");
+  const [sourceFilter, setSourceFilter] = useState<SourceFilter>("all");
   const [error, setError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
 
   const filtered = rows.filter((r) => {
+    // Source filter
+    if (sourceFilter === "portal" && r.source === "public_referral_page") return false;
+    if (sourceFilter === "public" && r.source !== "public_referral_page") return false;
+
+    // Status filter
     if (filter === "all") return true;
     if (filter === "pending") return !r.signed_contract && !r.gift_card_sent;
     if (filter === "signed") return r.signed_contract;
@@ -135,9 +143,34 @@ export default function ReferralsTable({
     },
   ];
 
+  const sourceFilters: { key: SourceFilter; label: string }[] = [
+    { key: "all", label: "All" },
+    { key: "portal", label: "Portal" },
+    { key: "public", label: "Public" },
+  ];
+
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-2">
+        {showProjectColumn && (
+          <>
+            {sourceFilters.map((sf) => (
+              <button
+                key={sf.key}
+                type="button"
+                onClick={() => setSourceFilter(sf.key)}
+                className={`px-3 py-1.5 rounded-full text-xs font-semibold transition ${
+                  sourceFilter === sf.key
+                    ? "bg-orange text-white"
+                    : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                }`}
+              >
+                {sf.label}
+              </button>
+            ))}
+            <span className="text-gray-300 mx-1">|</span>
+          </>
+        )}
         {filters.map((f) => (
           <button
             key={f.key}
@@ -201,7 +234,11 @@ export default function ReferralsTable({
                   </td>
                   {showProjectColumn && (
                     <td className="px-5 py-3 text-gray-600">
-                      {r.project?.id ? (
+                      {r.source === "public_referral_page" ? (
+                        <span className="inline-block text-xs font-semibold px-2 py-0.5 rounded-full bg-purple-100 text-purple-700">
+                          Public
+                        </span>
+                      ) : r.project?.id ? (
                         <Link
                           href={`/admin/projects/${r.project.id}`}
                           className="text-navy hover:text-orange transition"

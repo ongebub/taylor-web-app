@@ -22,6 +22,7 @@ export default async function ReferralsPage() {
       gift_card_sent,
       gift_card_sent_at,
       created_at,
+      source,
       project:projects ( id, customer_name, slug )
     `
     )
